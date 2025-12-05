@@ -1,0 +1,156 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Absensi</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body>
+            <nav class="navbar navbar-dark bg-primary">
+                <div class="container">
+                    <a class="navbar-brand" href="/">Sistem Absensi</a>
+                </div>
+            </nav>
+            
+            <div class="container mt-4">
+                <h2>✅ Absensi Mahasiswa</h2>
+                
+                {% if jadwal_hari_ini %}
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">📅 Jadwal Hari Ini ({{ hari_ini }})</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Mata Kuliah</th>
+                                        <th>Waktu</th>
+                                        <th>Ruangan</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for jadwal in jadwal_hari_ini %}
+                                    <tr>
+                                        <td>{{ jadwal.nama }} ({{ jadwal.kode }})</td>
+                                        <td>{{ jadwal.jam_mulai }} - {{ jadwal.jam_selesai }}</td>
+                                        <td>{{ jadwal.ruangan }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" 
+                                                    onclick="setMatkul('{{ jadwal.kode }}', '{{ jadwal.nama }}')">
+                                                Pilih
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📝 Form Absensi</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="absensiForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">NIM Mahasiswa *</label>
+                                    <input type="text" class="form-control" id="nim" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Mata Kuliah *</label>
+                                    <select class="form-select" id="kode_mk" required>
+                                        <option value="">Pilih Mata Kuliah</option>
+                                        {% for mk in semua_matkul %}
+                                        <option value="{{ mk.kode }}">{{ mk.nama }} ({{ mk.kode }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Keterangan (opsional)</label>
+                                    <textarea class="form-control" id="keterangan" rows="2"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    ✅ Catat Kehadiran
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function setMatkul(kode, nama) {
+                    document.getElementById('kode_mk').value = kode;
+                    alert(`Mata kuliah dipilih: ${nama}`);
+                }
+                
+                document.getElementById('absensiForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const nim = document.getElementById('nim').value;
+                    const kode_mk = document.getElementById('kode_mk').value;
+                    const keterangan = document.getElementById('keterangan').value;
+                    
+                    const formData = new FormData();
+                    formData.append('nim', nim);
+                    formData.append('kode_mk', kode_mk);
+                    formData.append('keterangan', keterangan);
+                    
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = '<div class="alert alert-info">Mencatat absensi...</div>';
+                    
+                    try {
+                        const response = await fetch('/api/absensi', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            resultDiv.innerHTML = `
+                                <div class="alert alert-success">
+                                    <h5>✅ Absensi Berhasil!</h5>
+                                    <p><strong>${data.data.nama}</strong> (NIM: ${data.data.nim})</p>
+                                    <p>Mata Kuliah: ${data.data.matakuliah}</p>
+                                    <p>Waktu: ${data.data.waktu}</p>
+                                </div>
+                            `;
+                            
+                            // Clear form after 3 seconds
+                            setTimeout(() => {
+                                document.getElementById('absensiForm').reset();
+                                resultDiv.innerHTML = '';
+                            }, 3000);
+                        } else {
+                            resultDiv.innerHTML = `
+                                <div class="alert alert-danger">
+                                    ❌ ${data.message}
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-danger">
+                                ❌ Error: Gagal terhubung ke server
+                            </div>
+                        `;
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        
